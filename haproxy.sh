@@ -36,15 +36,13 @@ defaults
    mode http
    option httplog
    option dontlognull
-   retries                 1
-   timeout http-request    1s
-   #timeout queue           1m
-   timeout connect         1s
-   timeout client          1s
-   timeout server          1s
+   retries 3
+   timeout connect 5000
+   timeout client  50000
+   timeout server  50000
    timeout http-keep-alive 1s
    timeout check           1s
-   #maxconn                 2048
+   maxconn                 2048
 
 
 #frontend
@@ -61,17 +59,13 @@ balance roundrobin
 #balance leastconn
 #balance source
 mode http
-#option httpchk GET / HTTP/1.1
-#http-check expect status 200
+option httpchk GET / HTTP/1.1
+http-check expect status 200
    server webserver1 $webserver1:8080 check
    server webserver2 $webserver2:8080 check
                                               
 EOT
-#other script lines here
-#endmsg
 
-#sed -i 's/webserver1_ip_address/$webserver1/g' /etc/haproxy/haproxy.conf
-#sed -i 's/webserver1_ip_address/$webserver1/g' /etc/haproxy/haproxy.conf
 
 haproxy -f /etc/haproxy/haproxy.cfg -c; #To test haproxy configuration
 
