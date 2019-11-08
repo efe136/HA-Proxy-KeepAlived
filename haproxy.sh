@@ -21,48 +21,53 @@ cd ~/etc/haproxy;
 cp haproxy.cfg haproxy.cfg_bac;
 #cat > ~/haproxyconfigfile.txt <<'endmsg'
 cat <<EOT >> haproxy.cfg
-
 global
-   log /dev/log local0
-   log /dev/log local1 notice
-   chroot /var/lib/haproxy
-   stats timeout 30s
-   user haproxy
-   group haproxy
-   daemon
+        maxconn 15000           # Max simultaneous connections from an upstream server
+        spread-checks 5         # Distribute health checks with some randomness
+        log 127.0.0.1 local0
+        log 127.0.0.1 local1 notice
+
 
 defaults
-   log global
-   mode http
-   option httplog
-   option dontlognull
-   retries 3
-   timeout connect 5000
-   timeout client  50000
-   timeout server  50000
-   timeout http-keep-alive 1s
-   timeout check           1s
-   maxconn                 2048
+        log global
+        mode http
+        option httplog
+        option dontlognull
+        option abortonclose     # abort request if client closes output channel while waiting
+        option redispatch       # any server can handle any session
+        option httpclose        # add "Connection:close" header if it is missing
+        retries                 3
+        timeout http-request    10s
+        timeout connect         5s
+        timeout client          50s
+        timeout server          30s
+        timeout http-keep-alive 1s
+        timeout check           5s
 
+        errorfile 400 /etc/haproxy/errors/400.http
+        errorfile 403 /etc/haproxy/errors/403.http
+        errorfile 408 /etc/haproxy/errors/408.http
+        errorfile 500 /etc/haproxy/errors/500.http
+        errorfile 502 /etc/haproxy/errors/502.http
+        errorfile 503 /etc/haproxy/errors/503.http
+        errorfile 504 /etc/haproxy/errors/504.http
 
-#frontend
-#---------------------------------
 frontend http_front
-bind *:80
-stats uri /haproxy?stats
-default_backend http_back
+        bind *:80
+        stats uri /haproxy?stats
+        mode http
+        default_backend http_back
 
-#round robin balancing backend http
-#-----------------------------------
 backend http_back
-balance roundrobin
-#balance leastconn
-#balance source
-mode http
-option httpchk GET / HTTP/1.1
-http-check expect status 200
-   server webserver1 $webserver1:8080 check
-   server webserver2 $webserver2:8080 check
+        #balance roundrobin
+        balance leastconn
+        mode http
+        cookie JSESSIONID prefix
+        option forwardfor
+        option httpchk HEAD / HTTP/1.0
+        http-check expect status 200
+        server webserver1 $webserver1:8080 weight 1 check inter 1000 rise 5 fall 1    # ip_address_of_1st_webserver
+        server webserver2 $webserver2:8080 weight 1 check inter 1000 rise 5 fall 1    # ip_address_of_2nd_webserver
                                               
 EOT
 
