@@ -24,9 +24,11 @@ cat <<EOT >> haproxy.cfg
 global
         maxconn 15000           # Max simultaneous connections from an upstream server
         spread-checks 5         # Distribute health checks with some randomness
+        stats   socket /var/run/haproxy.stats
+        chroot      /var/lib/haproxy
+        pidfile     /var/run/haproxy.pid
         log 127.0.0.1 local0
         log 127.0.0.1 local1 notice
-
 
 defaults
         log global
@@ -43,6 +45,10 @@ defaults
         timeout server          30s
         timeout http-keep-alive 1s
         timeout check           5s
+        timeout queue           5s  # maximum time to wait in the queue for a connection slot to be free
+        timeout tunnel          2m  # maximum inactivity time on the client and server side for tunnels
+        timeout client-fin      1s  # inactivity timeout on the client side for half-closed connections
+        timeout server-fin      1s  # inactivity timeout on the server side for half-closed connections
 
         errorfile 400 /etc/haproxy/errors/400.http
         errorfile 403 /etc/haproxy/errors/403.http
