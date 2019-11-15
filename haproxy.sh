@@ -24,6 +24,10 @@ cat <<EOT >> haproxy.cfg
 global
         maxconn 15000           # Max simultaneous connections from an upstream server
         spread-checks 5         # Distribute health checks with some randomness
+        daemon
+        nbproc          2       # setup for servers with 2 cpu. numbers can be change upon cpu numbers in server.
+        cpu-map         1 0
+        cpu-map         2 1
         stats   socket /var/run/haproxy.stats
         chroot      /var/lib/haproxy
         pidfile     /var/run/haproxy.pid
@@ -35,9 +39,9 @@ defaults
         mode http
         option httplog
         option dontlognull
-        option abortonclose     # abort request if client closes output channel while waiting
-        option redispatch       # any server can handle any session
-        option httpclose        # add "Connection:close" header if it is missing
+        option abortonclose         # abort request if client closes output channel while waiting
+        option redispatch           # any server can handle any session
+        option httpclose            # add "Connection:close" header if it is missing
         retries                 3
         timeout http-request    10s
         timeout connect         5s
@@ -60,7 +64,6 @@ defaults
 
 frontend http_front
         bind *:80
-        stats uri /haproxy?stats
         mode http
         default_backend http_back
 
@@ -70,10 +73,20 @@ backend http_back
         mode http
         cookie JSESSIONID prefix
         option forwardfor
-        option httpchk HEAD / HTTP/1.0
+        option httpchk HEAD /webapp HTTP/1.0
         http-check expect status 200
         server webserver1 $webserver1:8080 weight 1 check inter 1000 rise 5 fall 1    # ip_address_of_1st_webserver
         server webserver2 $webserver2:8080 weight 1 check inter 1000 rise 5 fall 1    # ip_address_of_2nd_webserver
+        
+ listen stats                       # Enable Statistic Page
+        bind *:85 process 1
+        mode http
+        log global
+        stats enable
+        stats uri /
+        stats realm Haproxy\ Statistics
+        stats auth admin:admin1080p
+        stats admin if TRUE
                                               
 EOT
 
